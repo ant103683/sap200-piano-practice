@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff Preview</title>
+    <style>
+      @font-face {
+        font-family: "Bravura";
+        src: url("../../../bravura-master/redist/otf/Bravura.otf")
+          format("opentype");
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 16px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .hint {
+        color: #555;
+        font-size: 12px;
+        margin: 8px 0 10px 0;
+      }
+      textarea {
+        width: 100%;
+        height: 140px;
+      }
+      .viewport {
+        width: 100%;
+        height: 520px;
+        overflow: auto;
+        border: 1px solid #ddd;
+        background: white;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button id="load-default">使用默认88键</button>
+      <button id="load-log">从日志加载</button>
+      <button id="reset-view">重置视图</button>
+      <label>
+        标注
+        <select id="label-mode">
+          <option value="name">音名</option>
+          <option value="midi">MIDI</option>
+        </select>
+      </label>
+      <span id="font-status"></span>
+      <span id="count"></span>
+    </div>
+    <div class="hint">
+      如果谱号/音符显示成方框，建议在项目根目录运行：<code>python -m http.server 8000</code>，然后打开
+      <code>http://localhost:8000/src/ui/views/staff.html</code>
+    </div>
+    <textarea id="log-input" placeholder="粘贴日志，例如: note=64"></textarea>
+    <div id="viewport" class="viewport">
+      <canvas id="staff" width="1600" height="520"></canvas>
+    </div>
+    <script src="./staff.js"></script>
+  </body>
+</html>

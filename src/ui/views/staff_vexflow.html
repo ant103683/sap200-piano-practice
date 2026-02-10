@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff VexFlow</title>
+    <style>
+      @font-face {
+        font-family: "Bravura";
+        src: url("../../../bravura-master/redist/otf/Bravura.otf")
+          format("opentype");
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 16px;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      textarea {
+        width: 100%;
+        height: 140px;
+      }
+      .viewport {
+        width: 100%;
+        height: 620px;
+        overflow: auto;
+        border: 1px solid #ddd;
+        background: white;
+      }
+      .duration-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin: 12px 0;
+      }
+      .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 18px 0 6px 0;
+      }
+      .duration-label {
+        min-width: 120px;
+        font-weight: 600;
+      }
+      .duration-canvas {
+        flex: 1;
+        overflow: auto;
+        border: 1px solid #eee;
+        padding: 6px 8px;
+        background: #fff;
+      }
+      #score {
+        min-height: 600px;
+      }
+      .hint {
+        color: #555;
+        font-size: 12px;
+        margin: 8px 0 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button id="load-default">使用默认88键</button>
+      <button id="load-log">从日志加载</button>
+      <button id="show-88">输出88键</button>
+      <button id="show-durations">输出时值示例</button>
+      <button id="reset-view">重置视图</button>
+      <label>
+        <input id="show-labels" type="checkbox" />
+        显示音名
+      </label>
+      <span id="font-status"></span>
+      <span id="count"></span>
+    </div>
+    <div class="hint">
+      建议在项目根目录运行：<code>python -m http.server 8000</code>，然后打开
+      <code>http://localhost:8000/src/ui/views/staff_vexflow.html</code>
+    </div>
+    <textarea id="log-input" placeholder="粘贴日志，例如: note=64"></textarea>
+    <div class="viewport" id="viewport">
+      <div id="score"></div>
+    </div>
+    <script src="../../../integrations/vexflow/vexflow.js"></script>
+    <script src="./staff_vexflow.js"></script>
+  </body>
+</html>

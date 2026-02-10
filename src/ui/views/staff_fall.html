@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Note Trainer</title>
+    <style>
+      @font-face {
+        font-family: "Bravura";
+        src: url("../../../bravura-master/redist/otf/Bravura.otf")
+          format("opentype");
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #f6f7fb;
+        color: #1f2937;
+        font-size: 14px;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 0; /* Prevent flex item from overflowing */
+        overflow-y: auto;
+      }
+      .sidebar {
+        width: 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e5e7eb;
+        overflow: visible;
+      }
+      .card-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        font-weight: 600;
+        color: #374151;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card-body {
+        padding: 16px;
+      }
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #111827;
+      }
+      .section-subtitle {
+        font-size: 13px;
+        color: #6b7280;
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+      
+      /* Scoreboard specific styles */
+      .scoreboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .score-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .score-label {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      .score-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+      }
+      .score-value.good { color: #10b981; }
+      .score-value.bad { color: #ef4444; }
+      .score-detail { font-size: 12px; color: #9ca3af; margin-left: 4px; font-weight: 400; }
+
+      /* Controls styles */
+      .btn-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      button {
+        background: #fff;
+        border: 1px solid #d1d5db;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #374151;
+        transition: all 0.2s;
+      }
+      button:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+      }
+      button:active {
+        background: #f3f4f6;
+      }
+      button.primary {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+      }
+      button.primary:hover {
+        background: #1d4ed8;
+      }
+      
+      .control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        gap: 8px;
+      }
+      .control-row:last-child { margin-bottom: 0; }
+      
+      .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 13px;
+      }
+      
+      input[type="text"], input[type="number"] {
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 13px;
+        width: 46px;
+        text-align: center;
+      }
+      input[type="text"]:focus, input[type="number"]:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+      }
+      
+      .range-inputs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        background: #f3f4f6;
+        border-radius: 999px;
+        font-size: 12px;
+        color: #4b5563;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #d1d5db;
+      }
+      .dot.on { background: #10b981; }
+
+      .canvas-container {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        padding: 10px;
+        overflow: auto;
+        min-height: 200px;
+      }
+      #score-random,
+      #score-live {
+        width: 100%;
+      }
+      #score-random svg,
+      #score-live svg {
+        display: block;
+      }
+
+      @media (max-width: 1100px) {
+        .container { flex-direction: column; height: auto; }
+        .sidebar { width: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="main-content">
+        <div class="card">
+          <div class="card-header">
+            随机练习
+            <div class="status-pill" id="range-current" style="font-weight: normal;">当前范围：C2 - B6</div>
+          </div>
+          <div class="card-body">
+            <div class="section-subtitle">
+              随机出现音符，实时检测输入。正确自动切换，错误扣分。
+            </div>
+            <div class="canvas-container">
+               <div id="score-random"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            实时输入
+            <div class="status-pill">
+               <div class="dot" id="pedal-dot"></div> 踏板
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="section-subtitle">
+              来自服务端的电钢事件：按下哪个音，就从左到右绘制到曲谱。
+            </div>
+            <div class="canvas-container">
+              <div id="score-live"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="font-size: 12px; color: #6b7280; text-align: center;">
+           随机音符范围：C-- 到 C++（五个八度，C2 至 B6）。右手音符显示在上谱表，左手音符显示在下谱表。
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="card">
+          <div class="card-header">计分板</div>
+          <div class="card-body">
+            <div style="text-align: center; margin-bottom: 16px;">
+               <div class="score-label">总分</div>
+               <div class="score-value" id="score-total" style="font-size: 32px; color: #2563eb;">0</div>
+            </div>
+            <div class="scoreboard-grid">
+              <div class="score-item">
+                <div class="score-label">正确</div>
+                <div class="score-value good" id="score-good">0</div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">错误</div>
+                <div class="score-value bad" id="score-bad">0</div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">平均耗时 <span style="font-size:10px">(去极值)</span></div>
+                <div class="score-value" id="avg-time" style="font-size: 16px;">—</div>
+              </div>
+              <div class="score-item"></div>
+              <div class="score-item">
+                <div class="score-label">最快 <span id="fastest-name" class="score-detail"></span></div>
+                <div class="score-value" id="fastest-time" style="font-size: 16px;">—</div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">最慢 <span id="slowest-name" class="score-detail"></span></div>
+                <div class="score-value" id="slowest-time" style="font-size: 16px;">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            控制台
+            <span class="status-pill" id="live-status">未连接</span>
+          </div>
+          <div class="card-body">
+            <div class="btn-group">
+               <button id="live-connect" class="primary">连接</button>
+               <button id="live-clear">清空</button>
+            </div>
+            <div class="btn-group">
+               <button id="random-note">随机一个</button>
+               <button id="toggle-auto">自动</button>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 12px 0;">
+
+            <div class="control-row">
+              <label class="toggle-label">
+                <input id="dual-mode" type="checkbox" checked />
+                双手训练
+              </label>
+              <label class="toggle-label">
+                <input id="show-name" type="checkbox" checked />
+                显示音名
+              </label>
+            </div>
+            <div class="control-row">
+               <label class="toggle-label">
+                <input id="live-reuse-line" type="checkbox" checked />
+                实时单行复用
+              </label>
+            </div>
+            
+            <div class="control-row" style="margin-top: 12px;">
+              <span style="font-size: 13px;">间隔</span>
+              <input id="interval" type="range" min="0.2" max="12" step="0.1" value="1.6" style="flex:1; margin: 0 8px;" />
+              <input id="interval-num" type="number" min="0.2" max="120" step="0.1" value="1.6" />
+              <span id="interval-value" style="font-size: 13px; width: 38px; text-align: right;">1.6s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">范围设置</div>
+          <div class="card-body">
+             <div class="control-row">
+                <span style="font-size: 13px; width: 30px;">全局</span>
+                <div class="range-inputs">
+                   <input id="range-start" type="text" value="C2" />
+                   <span style="color:#9ca3af">—</span>
+                   <input id="range-end" type="text" value="B6" />
+                </div>
+             </div>
+             <div class="control-row">
+                <span style="font-size: 13px; width: 30px;">右手</span>
+                <div class="range-inputs">
+                   <input id="treble-range-start" type="text" value="C4" />
+                   <span style="color:#9ca3af">—</span>
+                   <input id="treble-range-end" type="text" value="B5" />
+                </div>
+             </div>
+             <div class="control-row">
+                <span style="font-size: 13px; width: 30px;">左手</span>
+                <div class="range-inputs">
+                   <input id="bass-range-start" type="text" value="C2" />
+                   <span style="color:#9ca3af">—</span>
+                   <input id="bass-range-end" type="text" value="B3" />
+                </div>
+             </div>
+             <div style="margin-top:8px; font-size: 11px; color: #9ca3af;">
+               支持输入如 C3, A#4 等
+             </div>
+             <span id="range-current-treble" style="display:none"></span>
+             <span id="range-current-bass" style="display:none"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <script src="../../../integrations/vexflow/vexflow.js"></script>
+    <script src="./staff_fall.js"></script>
+  </body>
+</html>
