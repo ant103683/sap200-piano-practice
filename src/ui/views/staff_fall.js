@@ -4,6 +4,7 @@ const pedalDot = document.getElementById("pedal-dot")
 const randomButton = document.getElementById("random-note")
 const toggleAutoButton = document.getElementById("toggle-auto")
 const liveClearButton = document.getElementById("live-clear")
+const webMidiToggleButton = document.getElementById("webmidi-toggle")
 const liveReuseLineCheckbox = document.getElementById("live-reuse-line")
 const intervalInput = document.getElementById("interval")
 const intervalNum = document.getElementById("interval-num")
@@ -30,7 +31,35 @@ const fastestNameEl = document.getElementById("fastest-name")
 const slowestTimeEl = document.getElementById("slowest-time")
 const slowestNameEl = document.getElementById("slowest-name")
 
-const VF = window.Vex?.Flow || window.VF
+const debugBox = document.getElementById("debug-box")
+const setDebugBox = (text, kind = "info") => {
+  if (!debugBox) return
+  debugBox.textContent = String(text ?? "")
+  debugBox.style.color = kind === "error" ? "#b91c1c" : "#6b7280"
+  debugBox.style.background = kind === "error" ? "#fef2f2" : "#f9fafb"
+  debugBox.style.borderColor = kind === "error" ? "#fecaca" : "#e5e7eb"
+}
+
+window.addEventListener("error", (e) => {
+  const msg =
+    (e && e.error && e.error.stack) ||
+    (e && e.message) ||
+    "未知错误"
+  setDebugBox(msg, "error")
+})
+window.addEventListener("unhandledrejection", (e) => {
+  const reason = e && e.reason
+  const msg =
+    (reason && reason.stack) ||
+    (reason && reason.message) ||
+    String(reason || "未知 Promise 错误")
+  setDebugBox(msg, "error")
+})
+
+const VF = (window.Vex && window.Vex.Flow) || window.VF
+if (!VF) {
+  setDebugBox("VexFlow 未加载：请确认 vexflow.js 路径可访问", "error")
+}
 
 const pitchClassToName = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"]
 const pitchClassToLabel = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -76,6 +105,9 @@ let fastest = null
 let fastestNote = null
 let slowest = null
 let slowestNote = null
+let webMidiAccess = null
+let webMidiInput = null
+let webMidiEnabled = false
 
 const updateScoreboard = () => {
   if (scoreTotalEl) scoreTotalEl.textContent = String(scoreTotal)
@@ -196,7 +228,7 @@ const createNote = (midi, clef) => {
   }
   if (showNameCheckbox.checked) {
     const annotation = new VF.Annotation(nameForMidi(midi)).setFont("Arial", 14)
-    if (annotation.setVerticalJustification && VF.Annotation?.VerticalJustify) {
+    if (annotation.setVerticalJustification && VF.Annotation && VF.Annotation.VerticalJustify) {
       annotation.setVerticalJustification(VF.Annotation.VerticalJustify.TOP)
     }
     addModifier(note, annotation)
@@ -261,6 +293,8 @@ const buildLiveRenderableMeasures = () => {
 }
 
 const renderLiveScore = () => {
+  if (!VF) return
+  try {
   const renderable = buildLiveRenderableMeasures()
   const measureWidth = 240
   const rowGap = 180
@@ -315,9 +349,14 @@ const renderLiveScore = () => {
     trebleVoice.draw(context, treble)
     bassVoice.draw(context, bass)
   }
+  } catch (e) {
+    setDebugBox((e && e.stack) || (e && e.message) || String(e), "error")
+  }
 }
 
 const renderRandomScore = () => {
+  if (!VF) return
+  try {
   scoreRandomRoot.innerHTML = ""
   const width = Math.max(400, Math.floor(scoreRandomRoot.clientWidth || 980))
   const height = 420
@@ -377,6 +416,9 @@ const renderRandomScore = () => {
   new VF.Formatter().joinVoices([bassVoice]).format([bassVoice], staveWidth - 120)
   trebleVoice.draw(context, treble)
   bassVoice.draw(context, bass)
+  } catch (e) {
+    setDebugBox((e && e.stack) || (e && e.message) || String(e), "error")
+  }
 }
 
 const setSustain = (on) => {
@@ -464,6 +506,10 @@ const disconnectLive = () => {
 }
 
 const connectLive = () => {
+  if (!window.EventSource) {
+    setDebugBox("浏览器不支持 EventSource（SSE）", "error")
+    return
+  }
   liveUserDisconnected = false
   if (liveSource) {
     liveSource.close()
@@ -490,78 +536,154 @@ const connectLive = () => {
       } catch {
         return
       }
-      if (msg.type === "control_change" && msg.control === 64) {
-        setSustain((msg.value || 0) >= 64)
-      }
-      if (msg.edge === "down" && typeof msg.note === "number") {
-        if (dualMode) {
-          let advanced = false
-          if (!hitTreble && msg.note === randomTargetTreble) {
-            hitTreble = true
-            scoreGood += 1
-            scoreTotal += 1
-            updateScoreboard()
-          } else if (!hitBass && msg.note === randomTargetBass) {
-            hitBass = true
-            scoreGood += 1
-            scoreTotal += 1
-            updateScoreboard()
-          } else if (msg.note !== randomTargetTreble && msg.note !== randomTargetBass) {
-            scoreBad += 1
-            scoreTotal -= 1
-            updateScoreboard()
-          }
-          if (hitTreble && hitBass) {
-            const now = performance.now()
-            if (randomStartAt != null) {
-              const dt = Math.max(0, now - randomStartAt)
-              durations.push(dt)
-              if (fastest == null || dt < fastest) {
-                fastest = dt
-                fastestNote = randomTargetTreble
-              }
-              if (slowest == null || dt > slowest) {
-                slowest = dt
-                slowestNote = randomTargetTreble
-              }
-              updateMetricsUI()
-            }
-            advanced = true
-          }
-          if (advanced) nextRandomImmediately()
-        } else {
-          if (typeof randomMidiValue === "number") {
-            if (msg.note === randomMidiValue) {
-              scoreGood += 1
-              scoreTotal += 1
-              updateScoreboard()
-              const now = performance.now()
-              if (randomStartAt != null) {
-                const dt = Math.max(0, now - randomStartAt)
-                durations.push(dt)
-                if (fastest == null || dt < fastest) {
-                  fastest = dt
-                  fastestNote = randomMidiValue
-                }
-                if (slowest == null || dt > slowest) {
-                  slowest = dt
-                  slowestNote = randomMidiValue
-                }
-                updateMetricsUI()
-              }
-              nextRandomImmediately()
-            } else {
-              scoreBad += 1
-              scoreTotal -= 1
-              updateScoreboard()
-            }
-          }
-        }
-        pushLiveStep(msg.note)
-      }
+      setDebugBox(`SSE 收包：${evt.data}`)
+      handleIncoming(msg)
     }
   } catch {
     setLiveUI("disconnected")
+  }
+}
+
+const handleIncoming = (msg) => {
+  if (!msg || typeof msg !== "object") return
+  if (msg.type === "control_change" && msg.control === 64) {
+    setSustain((msg.value || 0) >= 64)
+  }
+  if (msg.edge === "down" && typeof msg.note === "number") {
+    if (dualMode) {
+      let advanced = false
+      if (!hitTreble && msg.note === randomTargetTreble) {
+        hitTreble = true
+        scoreGood += 1
+        scoreTotal += 1
+        updateScoreboard()
+      } else if (!hitBass && msg.note === randomTargetBass) {
+        hitBass = true
+        scoreGood += 1
+        scoreTotal += 1
+        updateScoreboard()
+      } else if (msg.note !== randomTargetTreble && msg.note !== randomTargetBass) {
+        scoreBad += 1
+        scoreTotal -= 1
+        updateScoreboard()
+      }
+      if (hitTreble && hitBass) {
+        const now = performance.now()
+        if (randomStartAt != null) {
+          const dt = Math.max(0, now - randomStartAt)
+          durations.push(dt)
+          if (fastest == null || dt < fastest) {
+            fastest = dt
+            fastestNote = randomTargetTreble
+          }
+          if (slowest == null || dt > slowest) {
+            slowest = dt
+            slowestNote = randomTargetTreble
+          }
+          updateMetricsUI()
+        }
+        advanced = true
+      }
+      if (advanced) nextRandomImmediately()
+    } else {
+      if (typeof randomMidiValue === "number") {
+        if (msg.note === randomMidiValue) {
+          scoreGood += 1
+          scoreTotal += 1
+          updateScoreboard()
+          const now = performance.now()
+          if (randomStartAt != null) {
+            const dt = Math.max(0, now - randomStartAt)
+            durations.push(dt)
+            if (fastest == null || dt < fastest) {
+              fastest = dt
+              fastestNote = randomMidiValue
+            }
+            if (slowest == null || dt > slowest) {
+              slowest = dt
+              slowestNote = randomMidiValue
+            }
+            updateMetricsUI()
+          }
+          nextRandomImmediately()
+        } else {
+          scoreBad += 1
+          scoreTotal -= 1
+          updateScoreboard()
+        }
+      }
+    }
+    pushLiveStep(msg.note)
+  }
+}
+
+const stopWebMidi = () => {
+  if (webMidiInput) {
+    webMidiInput.onmidimessage = null
+  }
+  webMidiAccess = null
+  webMidiInput = null
+  webMidiEnabled = false
+  if (webMidiToggleButton) webMidiToggleButton.textContent = "浏览器MIDI"
+  setDebugBox("WebMIDI 已断开")
+}
+
+const pickInput = (access) => {
+  const inputs = Array.from(access.inputs.values())
+  if (!inputs.length) return null
+  const keywords = ["SAP200", "MEDELI", "MIDI"]
+  for (const kw of keywords) {
+    const found = inputs.find((i) => (i.name || "").toUpperCase().includes(kw))
+    if (found) return found
+  }
+  return inputs[0]
+}
+
+const startWebMidi = async () => {
+  if (!navigator || !navigator.requestMIDIAccess) {
+    setDebugBox("浏览器不支持 WebMIDI（建议使用 Chrome / Edge）", "error")
+    return
+  }
+  try {
+    webMidiAccess = await navigator.requestMIDIAccess({ sysex: false })
+    webMidiInput = pickInput(webMidiAccess)
+    if (!webMidiInput) {
+      setDebugBox("未发现浏览器可用的 MIDI 输入设备", "error")
+      return
+    }
+    webMidiEnabled = true
+    if (webMidiToggleButton) webMidiToggleButton.textContent = "断开MIDI"
+    setDebugBox(`WebMIDI 已连接：${webMidiInput.name || webMidiInput.id}`)
+    webMidiInput.onmidimessage = (evt) => {
+      const data = evt.data
+      if (!data || data.length < 2) return
+      const status = data[0]
+      const type = status & 0xf0
+      const channel = status & 0x0f
+      if (type === 0x90) {
+        const note = data[1]
+        const velocity = data[2] ?? 0
+        const edge = velocity > 0 ? "down" : "up"
+        handleIncoming({ type: "note_on", channel, note, velocity, edge })
+        setDebugBox(`WebMIDI 收包：note_on ch=${channel} note=${note} vel=${velocity} edge=${edge}`)
+        return
+      }
+      if (type === 0x80) {
+        const note = data[1]
+        const velocity = data[2] ?? 0
+        handleIncoming({ type: "note_off", channel, note, velocity, edge: "up" })
+        setDebugBox(`WebMIDI 收包：note_off ch=${channel} note=${note}`)
+        return
+      }
+      if (type === 0xb0) {
+        const control = data[1]
+        const value = data[2] ?? 0
+        handleIncoming({ type: "control_change", channel, control, value })
+        setDebugBox(`WebMIDI 收包：cc ch=${channel} cc=${control} value=${value}`)
+      }
+    }
+  } catch (e) {
+    setDebugBox((e && e.stack) || (e && e.message) || String(e), "error")
   }
 }
 
@@ -573,6 +695,15 @@ liveConnectButton.addEventListener("click", () => {
   }
 })
 liveClearButton.addEventListener("click", () => clearLiveScore())
+if (webMidiToggleButton) {
+  webMidiToggleButton.addEventListener("click", async () => {
+    if (webMidiEnabled) {
+      stopWebMidi()
+    } else {
+      await startWebMidi()
+    }
+  })
+}
 
 randomButton.addEventListener("click", () => {
   stopAuto()
