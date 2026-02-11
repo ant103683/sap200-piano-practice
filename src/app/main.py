@@ -7,7 +7,7 @@ _src_dir = Path(__file__).resolve().parents[1]
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
-from core.midi import MidiListener
+from core.midi import MidiEventNormalizer, MidiListener
 
 
 def _parse_hold_threshold(argv: list[str]) -> float:
@@ -39,22 +39,6 @@ def _parse_capture_prefix(argv: list[str]) -> str:
 
 def _has_flag(argv: list[str], name: str) -> bool:
     return name in argv
-
-
-def _cc_name(control: int | None) -> str | None:
-    if control is None:
-        return None
-    return {
-        1: "mod_wheel",
-        2: "breath",
-        4: "foot_controller",
-        7: "channel_volume",
-        10: "pan",
-        11: "expression",
-        64: "sustain",
-        66: "sostenuto",
-        67: "soft_pedal",
-    }.get(control)
 
 
 def main():
@@ -98,24 +82,9 @@ def main():
         print(f"采集范围：{'全部事件' if capture_all else '仅有效事件（过滤clock等）'}（可用 --capture-all 切换）")
     capture_count = 0
     check_count = 0
-    active_notes: dict[tuple[int | None, int | None], tuple[datetime, int | None]] = {}
     last_ts: datetime | None = None
-
-    useful_types = {
-        "note_on",
-        "note_off",
-        "control_change",
-        "pitchwheel",
-        "aftertouch",
-        "polytouch",
-        "program_change",
-        "sysex",
-        "start",
-        "stop",
-        "continue",
-        "songpos",
-        "song_select",
-    }
+    capture_normalizer = MidiEventNormalizer()
+    check_normalizer = MidiEventNormalizer()
 
     def write_capture(record: dict):
         if not capture_handle:
@@ -129,47 +98,21 @@ def main():
     try:
         for event in listener.iter_events(device.name):
             if capture_mode:
-                if not capture_all and event.type not in useful_types:
+                if not capture_all and not capture_normalizer.is_useful(event.type):
                     continue
-                data = event.data or {}
                 dt_ms = None
                 if last_ts is not None:
                     dt_ms = int((event.timestamp - last_ts).total_seconds() * 1000)
                 last_ts = event.timestamp
-                record: dict = {
-                    "i": capture_count + 1,
-                    "t": event.timestamp.isoformat(timespec="milliseconds"),
-                    "dt_ms": dt_ms,
-                    "type": event.type,
-                    "channel": event.channel,
-                    "note": event.note,
-                    "velocity": event.velocity,
-                    "control": event.control,
-                    "value": event.value,
-                    "data": data,
-                }
-                for k in ("pitch", "program", "pressure"):
-                    if k in data:
-                        record[k] = data.get(k)
-                if event.type == "control_change" and event.control == 64:
-                    record["sustain"] = True if (event.value or 0) >= 64 else False
-                if event.type == "control_change":
-                    record["cc_name"] = _cc_name(event.control)
-
-                if event.type == "note_on" and (event.velocity or 0) > 0:
-                    key = (event.channel, event.note)
-                    active_notes[key] = (event.timestamp, event.velocity)
-                    record["edge"] = "down"
-                elif event.type in {"note_off", "note_on"} and (event.type == "note_off" or (event.velocity == 0)):
-                    key = (event.channel, event.note)
-                    start = active_notes.pop(key, None)
-                    record["edge"] = "up"
-                    if start:
-                        start_ts, start_velocity = start
-                        duration_s = (event.timestamp - start_ts).total_seconds()
-                        record["hold_ms"] = int(duration_s * 1000)
-                        record["long"] = True if duration_s >= hold_threshold_s else False
-                        record["down_velocity"] = start_velocity
+                normalized = capture_normalizer.normalize(
+                    event,
+                    hold_threshold_s=hold_threshold_s,
+                    include_data=True,
+                    include_cc_name=True,
+                )
+                record = normalized.to_record()
+                record["i"] = capture_count + 1
+                record["dt_ms"] = dt_ms
                 write_capture(compact(record))
                 capture_count += 1
 
@@ -177,32 +120,37 @@ def main():
                     continue
 
             if check_mode:
-                if event.type == "note_on" and event.velocity and event.velocity > 0:
-                    key = (event.channel, event.note)
-                    active_notes[key] = (event.timestamp, event.velocity)
+                normalized = check_normalizer.normalize(event, hold_threshold_s=hold_threshold_s)
+                if (
+                    normalized.edge == "down"
+                    and normalized.note is not None
+                    and normalized.velocity
+                    and normalized.velocity > 0
+                ):
                     check_count += 1
-                    line = f"{check_count:02d} down note={event.note} velocity={event.velocity} channel={event.channel} t={event.timestamp.isoformat(timespec='milliseconds')}"
+                    line = (
+                        f"{check_count:02d} down note={normalized.note} velocity={normalized.velocity} "
+                        f"channel={normalized.channel} t={normalized.timestamp.isoformat(timespec='milliseconds')}"
+                    )
                     print(line)
                     if log_handle:
                         log_handle.write(line + "\n")
                         log_handle.flush()
-                elif event.type in {"note_off", "note_on"} and (event.type == "note_off" or (event.velocity == 0)):
-                    key = (event.channel, event.note)
-                    start = active_notes.pop(key, None)
-                    if start:
-                        start_ts, start_velocity = start
-                        duration_s = (event.timestamp - start_ts).total_seconds()
-                        is_long = duration_s >= hold_threshold_s
-                        check_count += 1
-                        line = (
-                            f"{check_count:02d} up note={event.note} channel={event.channel} "
-                            f"hold_ms={int(duration_s * 1000)} long={1 if is_long else 0} "
-                            f"down_velocity={start_velocity} t={event.timestamp.isoformat(timespec='milliseconds')}"
-                        )
-                        print(line)
-                        if log_handle:
-                            log_handle.write(line + "\n")
-                            log_handle.flush()
+                elif (
+                    normalized.edge == "up"
+                    and normalized.note is not None
+                    and normalized.hold_ms is not None
+                ):
+                    check_count += 1
+                    line = (
+                        f"{check_count:02d} up note={normalized.note} channel={normalized.channel} "
+                        f"hold_ms={normalized.hold_ms} long={1 if normalized.long else 0} "
+                        f"down_velocity={normalized.down_velocity} t={normalized.timestamp.isoformat(timespec='milliseconds')}"
+                    )
+                    print(line)
+                    if log_handle:
+                        log_handle.write(line + "\n")
+                        log_handle.flush()
             else:
                 if event.type in {"note_on", "note_off"}:
                     print(f"{event.type} note={event.note} velocity={event.velocity} channel={event.channel}")

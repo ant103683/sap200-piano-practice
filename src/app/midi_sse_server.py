@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,7 +13,7 @@ _src_dir = Path(__file__).resolve().parents[1]
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
-from core.midi import MidiListener
+from core.midi import MidiEventNormalizer, MidiListener
 
 
 def _parse_int(argv: list[str], name: str, default: int) -> int:
@@ -41,28 +40,11 @@ def _json_line(obj: dict[str, Any]) -> bytes:
     return (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-useful_types = {
-    "note_on",
-    "note_off",
-    "control_change",
-    "pitchwheel",
-    "aftertouch",
-    "polytouch",
-    "program_change",
-    "sysex",
-    "start",
-    "stop",
-    "continue",
-    "songpos",
-    "song_select",
-}
-
-
 class MidiEventHub:
     def __init__(self):
         self._lock = threading.Lock()
         self._clients: set[queue.Queue[dict[str, Any]]] = set()
-        self._active_notes: dict[tuple[int | None, int | None], datetime] = {}
+        self._normalizer = MidiEventNormalizer()
 
     def add_client(self) -> queue.Queue[dict[str, Any]]:
         q: queue.Queue[dict[str, Any]] = queue.Queue(maxsize=2048)
@@ -84,38 +66,10 @@ class MidiEventHub:
                 continue
 
     def on_midi_event(self, event, include_all: bool):
-        if not include_all and event.type not in useful_types:
+        if not include_all and not self._normalizer.is_useful(event.type):
             return
-        data = event.data or {}
-        record: dict[str, Any] = {
-            "t": event.timestamp.isoformat(timespec="milliseconds"),
-            "type": event.type,
-            "channel": event.channel,
-            "note": event.note,
-            "velocity": event.velocity,
-            "control": event.control,
-            "value": event.value,
-        }
-        if event.type == "control_change" and event.control == 64:
-            record["sustain"] = True if (event.value or 0) >= 64 else False
-
-        if event.type == "note_on" and (event.velocity or 0) > 0:
-            key = (event.channel, event.note)
-            self._active_notes[key] = event.timestamp
-            record["edge"] = "down"
-        elif event.type in {"note_off", "note_on"} and (event.type == "note_off" or (event.velocity == 0)):
-            key = (event.channel, event.note)
-            start = self._active_notes.pop(key, None)
-            record["edge"] = "up"
-            if start is not None:
-                record["hold_ms"] = int((event.timestamp - start).total_seconds() * 1000)
-
-        for k in ("pitch", "program", "pressure"):
-            if k in data:
-                record[k] = data.get(k)
-
-        compact = {k: v for k, v in record.items() if v is not None}
-        self.publish(compact)
+        normalized = self._normalizer.normalize(event)
+        self.publish(normalized.to_record())
 
 
 hub = MidiEventHub()
