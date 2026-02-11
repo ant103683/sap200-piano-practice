@@ -9,8 +9,7 @@ export const createScoreRenderer = ({
   liveReuseLineEnabled,
   setDebugBox,
 }) => {
-  let liveMeasures = []
-  let liveCurrentMeasure = { trebleNotes: [], bassNotes: [] }
+  let liveSteps = []
 
   const midiToKey = (midi) => {
     const pc = midi % 12
@@ -61,6 +60,15 @@ export const createScoreRenderer = ({
 
   const createRest = (clef, duration = "qr") => new VF.StaveNote({ clef, keys: ["b/4"], duration })
 
+  const createSpacer = (clef, duration = "q") => {
+    const keys = clef === "bass" ? ["d/3"] : ["b/4"]
+    const note = new VF.StaveNote({ clef, keys, duration })
+    if (note && note.setStyle) {
+      note.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" })
+    }
+    return note
+  }
+
   const createNote = (midi, clef) => {
     const key = midiToKey(midi)
     const note = new VF.StaveNote({ clef, keys: [key], duration: "q" })
@@ -77,53 +85,13 @@ export const createScoreRenderer = ({
     return note
   }
 
-  const getLiveMeasuresPerRow = () => {
-    const measureWidth = 240
-    const leftMargin = 60
-    const availableWidth = Math.max(420, Math.floor(scoreLiveRoot.clientWidth || 980))
-    return Math.max(1, Math.floor((availableWidth - leftMargin) / measureWidth))
-  }
-
-  const buildLiveRenderableMeasures = () => {
-    const result = [...liveMeasures]
-    if (liveCurrentMeasure.trebleNotes.length) {
-      const pad = NOTES_PER_MEASURE - liveCurrentMeasure.trebleNotes.length
-      const trebleNotes = [...liveCurrentMeasure.trebleNotes]
-      const bassNotes = [...liveCurrentMeasure.bassNotes]
-      for (let i = 0; i < pad; i += 1) {
-        trebleNotes.push(createRest("treble"))
-        bassNotes.push(createRest("bass"))
-      }
-      result.push({ trebleNotes, bassNotes })
-    }
-    if (!result.length) {
-      result.push({
-        trebleNotes: Array.from({ length: NOTES_PER_MEASURE }, () => createRest("treble")),
-        bassNotes: Array.from({ length: NOTES_PER_MEASURE }, () => createRest("bass")),
-      })
-    }
-    return result
-  }
-
   const renderLiveScore = () => {
     if (!VF) return
     try {
-      const renderable = buildLiveRenderableMeasures()
-      const measureWidth = 240
-      const rowGap = 180
-      const staffGap = 110
-      const leftMargin = 60
-      const topMargin = 40
-      const availableWidth = Math.max(420, Math.floor(scoreLiveRoot.clientWidth || 980))
-      const measuresPerRow = liveReuseLineEnabled()
-        ? getLiveMeasuresPerRow()
-        : Math.max(1, Math.floor((availableWidth - leftMargin) / measureWidth))
-      const measureCount = renderable.length
-      const rowCount = liveReuseLineEnabled() ? 1 : Math.max(1, Math.ceil(measureCount / measuresPerRow))
-      const width = measuresPerRow * measureWidth + leftMargin + 40
-      const height = rowCount * rowGap + topMargin + staffGap + 60
-
       scoreLiveRoot.innerHTML = ""
+      const width = Math.max(420, Math.floor(scoreLiveRoot.clientWidth || 980))
+      const height = 420
+
       const renderer = new VF.Renderer(scoreLiveRoot, VF.Renderer.Backends.SVG)
       renderer.resize(width, height)
       const context = renderer.getContext()
@@ -131,34 +99,52 @@ export const createScoreRenderer = ({
         VF.setMusicFont("Bravura")
       }
 
-      for (let m = 0; m < measureCount; m += 1) {
-        const row = Math.floor(m / measuresPerRow)
-        const col = m % measuresPerRow
-        const x = leftMargin + col * measureWidth
-        const y = topMargin + row * rowGap
+      const x = 70
+      const y = 60
+      const staveWidth = width - 140
+      const staffGap = 190
 
-        const treble = new VF.Stave(x, y, measureWidth)
-        const bass = new VF.Stave(x, y + staffGap, measureWidth)
+      const treble = new VF.Stave(x, y, staveWidth)
+      const bass = new VF.Stave(x, y + staffGap, staveWidth)
+      treble.addClef("treble").addTimeSignature("4/4")
+      bass.addClef("bass").addTimeSignature("4/4")
 
-        if (col === 0) {
-          treble.addClef("treble").addTimeSignature("4/4")
-          bass.addClef("bass").addTimeSignature("4/4")
-          const brace = new VF.StaveConnector(treble, bass)
-          brace.setType(VF.StaveConnector.type.BRACE)
-          brace.setContext(context).draw()
-          const line = new VF.StaveConnector(treble, bass)
-          line.setType(VF.StaveConnector.type.SINGLE_LEFT)
-          line.setContext(context).draw()
+      const brace = new VF.StaveConnector(treble, bass)
+      brace.setType(VF.StaveConnector.type.BRACE)
+      brace.setContext(context).draw()
+      const line = new VF.StaveConnector(treble, bass)
+      line.setType(VF.StaveConnector.type.SINGLE_LEFT)
+      line.setContext(context).draw()
+
+      treble.setContext(context).draw()
+      bass.setContext(context).draw()
+
+      if (liveSteps.length) {
+        const maxSteps = liveReuseLineEnabled()
+          ? Math.max(8, Math.min(48, Math.floor((staveWidth - 120) / 56)))
+          : 64
+        const steps = liveSteps.slice(-maxSteps)
+        const paddedSlots = Math.ceil(Math.max(1, steps.length) / NOTES_PER_MEASURE) * NOTES_PER_MEASURE
+        const trebleNotes = []
+        const bassNotes = []
+        for (let i = 0; i < paddedSlots; i += 1) {
+          const midi = i < steps.length ? steps[i] : null
+          if (typeof midi === "number") {
+            const isTreble = midi >= 60
+            const note = createNote(midi, isTreble ? "treble" : "bass")
+            trebleNotes.push(isTreble ? note : createSpacer("treble"))
+            bassNotes.push(isTreble ? createSpacer("bass") : note)
+          } else {
+            trebleNotes.push(createSpacer("treble"))
+            bassNotes.push(createSpacer("bass"))
+          }
         }
 
-        treble.setContext(context).draw()
-        bass.setContext(context).draw()
-
-        const { trebleNotes, bassNotes } = renderable[m]
-        const trebleVoice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(trebleNotes)
-        const bassVoice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(bassNotes)
-        new VF.Formatter().joinVoices([trebleVoice]).format([trebleVoice], measureWidth - 36)
-        new VF.Formatter().joinVoices([bassVoice]).format([bassVoice], measureWidth - 36)
+        const beats = paddedSlots
+        const trebleVoice = new VF.Voice({ num_beats: beats, beat_value: 4 }).addTickables(trebleNotes)
+        const bassVoice = new VF.Voice({ num_beats: beats, beat_value: 4 }).addTickables(bassNotes)
+        new VF.Formatter().joinVoices([trebleVoice]).format([trebleVoice], staveWidth - 120)
+        new VF.Formatter().joinVoices([bassVoice]).format([bassVoice], staveWidth - 120)
         trebleVoice.draw(context, treble)
         bassVoice.draw(context, bass)
       }
@@ -236,25 +222,14 @@ export const createScoreRenderer = ({
   }
 
   const clearLiveScore = () => {
-    liveMeasures = []
-    liveCurrentMeasure = { trebleNotes: [], bassNotes: [] }
+    liveSteps = []
     renderLiveScore()
   }
 
   const pushLiveStep = (midi) => {
-    if (liveReuseLineEnabled()) {
-      const limit = getLiveMeasuresPerRow()
-      if (liveMeasures.length >= limit && liveCurrentMeasure.trebleNotes.length === 0) {
-        liveMeasures = []
-      }
-    }
-    const isTreble = midi >= 60
-    const note = createNote(midi, isTreble ? "treble" : "bass")
-    liveCurrentMeasure.trebleNotes.push(isTreble ? note : createRest("treble"))
-    liveCurrentMeasure.bassNotes.push(isTreble ? createRest("bass") : note)
-    if (liveCurrentMeasure.trebleNotes.length >= NOTES_PER_MEASURE) {
-      liveMeasures.push(liveCurrentMeasure)
-      liveCurrentMeasure = { trebleNotes: [], bassNotes: [] }
+    liveSteps.push(midi)
+    if (liveSteps.length > 512) {
+      liveSteps = liveSteps.slice(-256)
     }
     renderLiveScore()
   }

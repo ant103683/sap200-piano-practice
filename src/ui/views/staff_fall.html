@@ -4,336 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SAP200 钢琴训练台</title>
-    <style>
-      @font-face {
-        font-family: "Bravura";
-        src: url("../../../bravura-master/redist/otf/Bravura.otf")
-          format("opentype");
-      }
-
-      :root {
-        --bg: #f3f5f9;
-        --surface: #ffffff;
-        --surface-muted: #f8fafc;
-        --line: #e2e8f0;
-        --text: #0f172a;
-        --text-muted: #64748b;
-        --primary: #2563eb;
-        --good: #059669;
-        --bad: #dc2626;
-        --radius: 14px;
-        --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        font-family: "Segoe UI", system-ui, sans-serif;
-        background:
-          radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.08), transparent 24%),
-          radial-gradient(circle at 92% 10%, rgba(14, 165, 233, 0.08), transparent 22%),
-          var(--bg);
-        color: var(--text);
-      }
-
-      .app-shell {
-        max-width: 1520px;
-        margin: 0 auto;
-        padding: 18px;
-      }
-
-      .topbar {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 14px 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        box-shadow: var(--shadow);
-      }
-
-      .title-wrap h1 {
-        margin: 0;
-        font-size: 20px;
-        letter-spacing: 0.2px;
-      }
-
-      .title-wrap p {
-        margin: 4px 0 0 0;
-        color: var(--text-muted);
-        font-size: 13px;
-      }
-
-      .topbar-status {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
-
-      .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: var(--surface-muted);
-        color: #334155;
-        padding: 4px 10px;
-        font-size: 12px;
-        white-space: nowrap;
-      }
-
-      .layout {
-        margin-top: 14px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 356px;
-        gap: 14px;
-      }
-
-      .main-content {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        min-width: 0;
-      }
-
-      .sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        overflow: hidden;
-        box-shadow: var(--shadow);
-      }
-
-      .card-header {
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 14px;
-        border-bottom: 1px solid #edf2f7;
-        font-weight: 700;
-        letter-spacing: 0.2px;
-      }
-
-      .card-body {
-        padding: 14px;
-      }
-
-      .canvas-container {
-        background: #fbfdff;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px;
-        overflow: auto;
-        min-height: 220px;
-      }
-
-      #score-random,
-      #score-live {
-        width: 100%;
-      }
-
-      #score-random svg,
-      #score-live svg {
-        display: block;
-      }
-
-      .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #cbd5e1;
-      }
-
-      .dot.on {
-        background: #10b981;
-      }
-
-      .btn-group {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      button {
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        font-size: 13px;
-        height: 32px;
-        padding: 0 12px;
-        cursor: pointer;
-        color: #334155;
-        transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
-      }
-
-      button:hover {
-        border-color: #94a3b8;
-      }
-
-      button:active {
-        transform: translateY(1px);
-      }
-
-      button.primary {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
-      }
-
-      .stack-12 {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .stack-8 {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .divider {
-        border: 0;
-        border-top: 1px solid #edf2f7;
-        margin: 0;
-      }
-
-      .control-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-
-      .toggle-label {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #0f172a;
-      }
-
-      input[type="text"],
-      input[type="number"] {
-        width: 58px;
-        height: 30px;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        background: #fff;
-        text-align: center;
-        font-size: 13px;
-        color: #0f172a;
-      }
-
-      input[type="text"]:focus,
-      input[type="number"]:focus {
-        outline: none;
-        border-color: #60a5fa;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-      }
-
-      .range-inputs {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .scoreboard-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      .score-item {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 10px;
-      }
-
-      .score-label {
-        font-size: 12px;
-        color: #64748b;
-      }
-
-      .score-value {
-        margin-top: 4px;
-        font-size: 22px;
-        font-weight: 700;
-        color: #0f172a;
-      }
-
-      .score-value.good {
-        color: var(--good);
-      }
-
-      .score-value.bad {
-        color: var(--bad);
-      }
-
-      .score-detail {
-        font-size: 12px;
-        color: #64748b;
-      }
-
-      .debug-wrap {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        overflow: hidden;
-      }
-
-      .debug-wrap summary {
-        cursor: pointer;
-        list-style: none;
-        padding: 8px 10px;
-        font-size: 12px;
-        color: #475569;
-        background: #f8fafc;
-      }
-
-      .debug-wrap summary::-webkit-details-marker {
-        display: none;
-      }
-
-      #debug-box {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 11px;
-        line-height: 1.45;
-        background: #f8fafc;
-        border-top: 1px solid #e2e8f0;
-        color: #4b5563;
-        padding: 10px;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      .footer-hint {
-        margin-top: 10px;
-        text-align: center;
-        font-size: 12px;
-        color: #64748b;
-      }
-
-      @media (max-width: 1180px) {
-        .layout {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="./staff_fall.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -343,9 +14,9 @@
           <p>随机音符训练 + 实时输入可视化（VexFlow）</p>
         </div>
         <div class="topbar-status">
-          <span class="status-pill" id="app-connection-state">连接状态：未连接</span>
-          <span class="status-pill" id="app-training-state">训练状态：就绪</span>
-          <span class="status-pill" id="range-current">当前范围：C2 至 B6</span>
+          <span class="status-pill" id="app-connection-state" role="status" aria-live="polite">连接状态：未连接</span>
+          <span class="status-pill" id="app-training-state" role="status" aria-live="polite">训练状态：就绪</span>
+          <span class="status-pill" id="range-current" role="status" aria-live="polite">当前范围：C2 至 B6</span>
         </div>
       </header>
 
@@ -366,7 +37,7 @@
             <div class="card-header">
               <span>实时输入</span>
               <span class="status-pill">
-                <span class="dot" id="pedal-dot"></span>
+                <span class="dot" id="pedal-dot" aria-hidden="true"></span>
                 踏板
               </span>
             </div>
@@ -382,18 +53,18 @@
           <section class="card">
             <div class="card-header">
               <span>连接与输入</span>
-              <span class="status-pill" id="live-status">未连接</span>
+              <span class="status-pill" id="live-status" role="status" aria-live="polite">未连接</span>
             </div>
             <div class="card-body stack-12">
               <div class="btn-group">
-                <button id="live-connect" class="primary">连接</button>
-                <button id="live-clear">清空</button>
-                <button id="webmidi-toggle">浏览器MIDI</button>
+                <button id="live-connect" class="btn btn-primary" type="button">连接</button>
+                <button id="live-clear" class="btn" type="button">清空</button>
+                <button id="webmidi-toggle" class="btn" type="button">浏览器MIDI</button>
               </div>
 
               <details class="debug-wrap">
                 <summary>调试日志</summary>
-                <div id="debug-box"></div>
+                <div id="debug-box" role="log" aria-live="polite"></div>
               </details>
             </div>
           </section>
@@ -402,13 +73,13 @@
             <div class="card-header">训练控制</div>
             <div class="card-body stack-12">
               <div class="btn-group">
-                <button id="random-note">随机一个</button>
-                <button id="toggle-auto">自动</button>
+                <button id="random-note" class="btn" type="button">随机一个</button>
+                <button id="toggle-auto" class="btn" type="button">自动</button>
               </div>
 
               <hr class="divider" />
 
-              <div class="control-row">
+              <div class="toggle-grid">
                 <label class="toggle-label">
                   <input id="dual-mode" type="checkbox" checked />
                   双手训练
@@ -417,17 +88,14 @@
                   <input id="show-name" type="checkbox" checked />
                   显示音名
                 </label>
-              </div>
-
-              <div class="control-row">
-                <label class="toggle-label">
+                <label class="toggle-label toggle-span-2">
                   <input id="live-reuse-line" type="checkbox" checked />
                   实时单行复用
                 </label>
               </div>
 
-              <div class="control-row">
-                <span style="font-size: 13px; color: #334155;">间隔</span>
+              <div class="interval-row">
+                <span class="control-label">间隔</span>
                 <input
                   id="interval"
                   type="range"
@@ -435,10 +103,12 @@
                   max="12"
                   step="0.1"
                   value="1.6"
-                  style="flex: 1; margin: 0 6px;"
+                  class="range-slider"
                 />
-                <input id="interval-num" type="number" min="0.2" max="120" step="0.1" value="1.6" />
-                <span id="interval-value" style="font-size: 13px; width: 38px; text-align: right; color: #334155;">1.6s</span>
+                <div class="interval-meta">
+                  <input id="interval-num" type="number" min="0.2" max="120" step="0.1" value="1.6" />
+                  <span id="interval-value" class="interval-pill">1.6s</span>
+                </div>
               </div>
             </div>
           </section>
@@ -448,7 +118,7 @@
             <div class="card-body">
               <div style="text-align: center; margin-bottom: 12px;">
                 <div class="score-label">总分</div>
-                <div class="score-value" id="score-total" style="font-size: 34px; color: var(--primary);">0</div>
+                <div class="score-value score-total" id="score-total">0</div>
               </div>
               <div class="scoreboard-grid">
                 <div class="score-item">
@@ -461,15 +131,15 @@
                 </div>
                 <div class="score-item">
                   <div class="score-label">平均耗时（去极值）</div>
-                  <div class="score-value" id="avg-time" style="font-size: 18px;">—</div>
+                  <div class="score-value score-value-sm" id="avg-time">—</div>
                 </div>
                 <div class="score-item">
                   <div class="score-label">最快 <span id="fastest-name" class="score-detail"></span></div>
-                  <div class="score-value" id="fastest-time" style="font-size: 18px;">—</div>
+                  <div class="score-value score-value-sm" id="fastest-time">—</div>
                 </div>
                 <div class="score-item" style="grid-column: 1 / -1;">
                   <div class="score-label">最慢 <span id="slowest-name" class="score-detail"></span></div>
-                  <div class="score-value" id="slowest-time" style="font-size: 18px;">—</div>
+                  <div class="score-value score-value-sm" id="slowest-time">—</div>
                 </div>
               </div>
             </div>
@@ -502,9 +172,9 @@
                   <input id="bass-range-end" type="text" value="B3" />
                 </div>
               </div>
-              <div style="margin-top: 4px; font-size: 11px; color: #94a3b8;">支持输入如 C3, A#4 等</div>
-              <span id="range-current-treble" style="display: none;"></span>
-              <span id="range-current-bass" style="display: none;"></span>
+              <div class="range-hint">支持输入如 C3, A#4 等</div>
+              <span id="range-current-treble" class="range-current-sub"></span>
+              <span id="range-current-bass" class="range-current-sub"></span>
             </div>
           </section>
         </aside>
