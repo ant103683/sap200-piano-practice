@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>88 键钢琴</title>
+    <link rel="stylesheet" href="./staff_fall.css" />
+    <link rel="stylesheet" href="./piano_88.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="title-wrap">
+          <h1>88 键钢琴</h1>
+          <p>按下 MIDI 键盘，网页钢琴同步点亮</p>
+        </div>
+        <div class="topbar-status">
+          <span class="status-pill" id="piano-connection-state" role="status" aria-live="polite">连接状态：未连接</span>
+          <span class="status-pill" id="piano-source" role="status" aria-live="polite">输入源：—</span>
+          <span class="status-pill" id="piano-sustain" role="status" aria-live="polite">踏板：关</span>
+        </div>
+      </header>
+
+      <div class="layout piano-layout">
+        <main class="main-content">
+          <section class="card">
+            <div class="card-header">
+              <span>键盘</span>
+              <div class="piano-actions">
+                <button id="piano-clear" class="btn" type="button">清空高亮</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="piano-shell" id="piano-shell">
+                <div id="piano" class="piano" role="application" aria-label="88 键钢琴"></div>
+              </div>
+              <div class="piano-hint">范围：A0（MIDI 21）— C8（MIDI 108）。支持鼠标点击测试。</div>
+            </div>
+          </section>
+        </main>
+
+        <aside class="sidebar">
+          <section class="card">
+            <div class="card-header">
+              <span>连接与输入</span>
+              <span class="status-pill" id="piano-live-status" role="status" aria-live="polite">未连接</span>
+            </div>
+            <div class="card-body stack-12">
+              <div class="btn-group">
+                <button id="piano-live-connect" class="btn btn-primary" type="button">连接</button>
+                <button id="piano-webmidi-toggle" class="btn" type="button">浏览器MIDI</button>
+              </div>
+
+              <details class="debug-wrap">
+                <summary>调试日志</summary>
+                <div id="piano-debug-box" role="log" aria-live="polite"></div>
+              </details>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <span>节拍器</span>
+              <span class="status-pill" id="metronome-status" role="status" aria-live="polite">停止</span>
+            </div>
+            <div class="card-body stack-12">
+              <div class="btn-group">
+                <button id="metronome-toggle" class="btn btn-primary" type="button">开始</button>
+              </div>
+
+              <div class="interval-row">
+                <span class="control-label">速度</span>
+                <input
+                  id="metronome-bpm"
+                  type="range"
+                  min="40"
+                  max="220"
+                  step="1"
+                  value="96"
+                  class="range-slider"
+                />
+                <div class="interval-meta">
+                  <input id="metronome-bpm-num" type="number" min="40" max="220" step="1" value="96" />
+                  <span id="metronome-bpm-value" class="interval-pill">96 BPM</span>
+                </div>
+              </div>
+
+              <div class="control-row">
+                <span class="control-label">拍号</span>
+                <div class="metronome-select">
+                  <select id="metronome-beats">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="6">6</option>
+                  </select>
+                </div>
+                <span id="metronome-beats-value" class="interval-pill">4/4</span>
+              </div>
+
+              <div class="interval-row">
+                <span class="control-label">音量</span>
+                <input
+                  id="metronome-volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.6"
+                  class="range-slider"
+                />
+                <div class="interval-meta">
+                  <input id="metronome-volume-num" type="number" min="0" max="1" step="0.05" value="0.6" />
+                  <span id="metronome-volume-value" class="interval-pill">60%</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">显示</div>
+            <div class="card-body stack-12">
+              <div class="toggle-grid">
+                <label class="toggle-label">
+                  <input id="piano-show-c-labels" type="checkbox" checked />
+                  显示 C 标记
+                </label>
+                <label class="toggle-label">
+                  <input id="piano-show-note" type="checkbox" checked />
+                  显示音名
+                </label>
+              </div>
+
+              <div class="piano-palette">
+                <div class="piano-palette-row">
+                  <span class="piano-palette-label">按下</span>
+                  <input id="piano-color-down" class="piano-color-input" type="color" value="#2563eb" />
+                  <span id="piano-color-down-value" class="interval-pill">#2563eb</span>
+                </div>
+                <div class="piano-palette-row">
+                  <span class="piano-palette-label">保持</span>
+                  <input id="piano-color-held" class="piano-color-input" type="color" value="#10b981" />
+                  <span id="piano-color-held-value" class="interval-pill">#10b981</span>
+                </div>
+                <div class="btn-group">
+                  <button id="piano-color-reset" class="btn" type="button">恢复默认</button>
+                </div>
+              </div>
+
+              <div class="piano-legend">
+                <div class="piano-legend-item">
+                  <span class="piano-swatch piano-swatch-down"></span>
+                  按下
+                </div>
+                <div class="piano-legend-item">
+                  <span class="piano-swatch piano-swatch-held"></span>
+                  踏板保持
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <script type="module" src="./piano_88.js"></script>
+  </body>
+</html>

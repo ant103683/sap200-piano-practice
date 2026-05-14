@@ -42,5 +42,16 @@ export const createTrainerRefs = () => ({
   slowestTimeEl: queryRequired("slowest-time"),
   slowestNameEl: queryRequired("slowest-name"),
   debugBox: queryRequired("debug-box"),
+  metronomeStatus: queryRequired("metronome-status"),
+  metronomeToggle: queryRequired("metronome-toggle"),
+  metronomeBpm: queryRequired("metronome-bpm"),
+  metronomeBpmNum: queryRequired("metronome-bpm-num"),
+  metronomeBpmValue: queryRequired("metronome-bpm-value"),
+  metronomeBeats: queryRequired("metronome-beats"),
+  metronomeBeatsValue: queryRequired("metronome-beats-value"),
+  metronomeTimbre: queryRequired("metronome-timbre"),
+  metronomeTimbreValue: queryRequired("metronome-timbre-value"),
+  metronomeVolume: queryRequired("metronome-volume"),
+  metronomeVolumeNum: queryRequired("metronome-volume-num"),
+  metronomeVolumeValue: queryRequired("metronome-volume-value"),
 })
-

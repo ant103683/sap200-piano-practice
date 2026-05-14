@@ -30,6 +30,25 @@ export const bootstrapTrainerApp = () => {
   const store = createTrainerStore()
   const machine = new TrainerStateMachine()
 
+  const METRONOME_TIMBRES = {
+    click: { label: "电子", type: "square", base: 1200, accent: 1800 },
+    soft: { label: "柔和", type: "sine", base: 880, accent: 1320 },
+    clear: { label: "清晰", type: "triangle", base: 1000, accent: 1500 },
+    bright: { label: "明亮", type: "sawtooth", base: 1100, accent: 1650 },
+  }
+  const metronome = {
+    bpm: 96,
+    beats: 4,
+    volume: 0.6,
+    timbre: "click",
+    running: false,
+    timerId: null,
+    audio: null,
+    master: null,
+    nextTime: 0,
+    beatIndex: 0,
+  }
+
   const setDebugBox = (text, kind = "info") => {
     refs.debugBox.textContent = String(text ?? "")
     refs.debugBox.style.color = kind === "error" ? "#9f1239" : "#4b5563"
@@ -67,6 +86,139 @@ export const bootstrapTrainerApp = () => {
   const parseNameToMidi = renderer.parseNameToMidi
 
   const ui = createTrainerUi({ refs, store, machine, nameForMidi, formatSeconds })
+
+  const clampNumber = (value, min, max, fallback) => {
+    const n = Number(value)
+    if (!Number.isFinite(n)) return fallback
+    return clamp(n, min, max)
+  }
+
+  const updateMetronomeStatus = () => {
+    refs.metronomeStatus.textContent = metronome.running ? "运行中" : "停止"
+    refs.metronomeStatus.dataset.state = metronome.running ? "running" : "disconnected"
+    refs.metronomeToggle.textContent = metronome.running ? "停止" : "开始"
+    refs.metronomeToggle.className = metronome.running ? "btn btn-danger" : "btn btn-primary"
+  }
+
+  const updateMetronomeUi = () => {
+    const profile = METRONOME_TIMBRES[metronome.timbre] || METRONOME_TIMBRES.click
+    refs.metronomeBpm.value = String(metronome.bpm)
+    refs.metronomeBpmNum.value = String(metronome.bpm)
+    refs.metronomeBpmValue.textContent = `${metronome.bpm} BPM`
+    refs.metronomeBeats.value = String(metronome.beats)
+    refs.metronomeBeatsValue.textContent = `${metronome.beats}/4`
+    refs.metronomeTimbre.value = metronome.timbre
+    refs.metronomeTimbreValue.textContent = profile.label
+    refs.metronomeVolume.value = String(metronome.volume)
+    refs.metronomeVolumeNum.value = String(metronome.volume.toFixed(2))
+    refs.metronomeVolumeValue.textContent = `${Math.round(metronome.volume * 100)}%`
+    updateMetronomeStatus()
+  }
+
+  const persistMetronome = () => {
+    try {
+      localStorage.setItem("trainer.metroBpm", String(metronome.bpm))
+      localStorage.setItem("trainer.metroBeats", String(metronome.beats))
+      localStorage.setItem("trainer.metroVolume", String(metronome.volume))
+      localStorage.setItem("trainer.metroTimbre", metronome.timbre)
+    } catch {}
+  }
+
+  const ensureAudio = async () => {
+    if (!metronome.audio) {
+      const audio = new AudioContext()
+      const master = audio.createGain()
+      master.gain.value = metronome.volume
+      master.connect(audio.destination)
+      metronome.audio = audio
+      metronome.master = master
+    }
+    if (metronome.audio.state === "suspended") {
+      await metronome.audio.resume()
+    }
+  }
+
+  const playClick = (time, accent) => {
+    if (!metronome.audio || !metronome.master) return
+    const profile = METRONOME_TIMBRES[metronome.timbre] || METRONOME_TIMBRES.click
+    const osc = metronome.audio.createOscillator()
+    const gain = metronome.audio.createGain()
+    osc.type = profile.type
+    osc.frequency.value = accent ? profile.accent : profile.base
+    gain.gain.setValueAtTime(0.0001, time)
+    gain.gain.exponentialRampToValueAtTime(accent ? 0.9 : 0.6, time + 0.002)
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08)
+    osc.connect(gain)
+    gain.connect(metronome.master)
+    osc.start(time)
+    osc.stop(time + 0.1)
+  }
+
+  const scheduleMetronome = () => {
+    if (!metronome.audio) return
+    const lookahead = 0.12
+    const now = metronome.audio.currentTime
+    while (metronome.nextTime < now + lookahead) {
+      const accent = metronome.beatIndex % metronome.beats === 0
+      playClick(metronome.nextTime, accent)
+      metronome.nextTime += 60 / metronome.bpm
+      metronome.beatIndex += 1
+    }
+  }
+
+  const startMetronome = async () => {
+    if (metronome.running) return
+    await ensureAudio()
+    metronome.running = true
+    metronome.nextTime = metronome.audio.currentTime + 0.05
+    metronome.beatIndex = 0
+    metronome.timerId = setInterval(scheduleMetronome, 25)
+    updateMetronomeStatus()
+  }
+
+  const stopMetronome = () => {
+    if (!metronome.running) return
+    metronome.running = false
+    if (metronome.timerId) {
+      clearInterval(metronome.timerId)
+      metronome.timerId = null
+    }
+    updateMetronomeStatus()
+  }
+
+  const setBpm = (value) => {
+    const bpm = Math.round(clampNumber(value, 40, 220, metronome.bpm))
+    metronome.bpm = bpm
+    if (metronome.running && metronome.audio) {
+      metronome.nextTime = metronome.audio.currentTime + 0.05
+    }
+    updateMetronomeUi()
+    persistMetronome()
+  }
+
+  const setBeats = (value) => {
+    const beats = Math.round(clampNumber(value, 2, 8, metronome.beats))
+    metronome.beats = beats
+    metronome.beatIndex = 0
+    updateMetronomeUi()
+    persistMetronome()
+  }
+
+  const setTimbre = (value) => {
+    metronome.timbre = METRONOME_TIMBRES[value] ? value : "click"
+    updateMetronomeUi()
+    persistMetronome()
+  }
+
+  const setVolume = (value) => {
+    const volume = clampNumber(value, 0, 1, metronome.volume)
+    metronome.volume = volume
+    if (metronome.master && metronome.audio) {
+      metronome.master.gain.setTargetAtTime(volume, metronome.audio.currentTime, 0.02)
+    }
+    updateMetronomeUi()
+    persistMetronome()
+  }
 
   const renderRanges = () => {
     ui.renderRanges(
@@ -250,6 +402,21 @@ export const bootstrapTrainerApp = () => {
     nextRandomImmediately()
   })
 
+  refs.metronomeToggle.addEventListener("click", async () => {
+    if (metronome.running) {
+      stopMetronome()
+    } else {
+      await startMetronome()
+    }
+  })
+
+  refs.metronomeBpm.addEventListener("input", () => setBpm(refs.metronomeBpm.value))
+  refs.metronomeBpmNum.addEventListener("input", () => setBpm(refs.metronomeBpmNum.value))
+  refs.metronomeBeats.addEventListener("change", () => setBeats(refs.metronomeBeats.value))
+  refs.metronomeTimbre.addEventListener("change", () => setTimbre(refs.metronomeTimbre.value))
+  refs.metronomeVolume.addEventListener("input", () => setVolume(refs.metronomeVolume.value))
+  refs.metronomeVolumeNum.addEventListener("input", () => setVolume(refs.metronomeVolumeNum.value))
+
   const init = () => {
     refs.showNameCheckbox.checked = store.settings.showName
     refs.liveReuseLineCheckbox.checked = store.settings.liveReuseLine
@@ -269,6 +436,14 @@ export const bootstrapTrainerApp = () => {
     refs.toggleAutoButton.className = store.training.autoTimer ? "btn btn-danger" : "btn"
     midiAdapters.disconnectSse()
     midiAdapters.connectSse()
+    try {
+      metronome.bpm = clampNumber(localStorage.getItem("trainer.metroBpm"), 40, 220, metronome.bpm)
+      metronome.beats = clampNumber(localStorage.getItem("trainer.metroBeats"), 2, 8, metronome.beats)
+      metronome.volume = clampNumber(localStorage.getItem("trainer.metroVolume"), 0, 1, metronome.volume)
+      const savedTimbre = localStorage.getItem("trainer.metroTimbre")
+      metronome.timbre = METRONOME_TIMBRES[savedTimbre] ? savedTimbre : metronome.timbre
+    } catch {}
+    updateMetronomeUi()
   }
 
   init()

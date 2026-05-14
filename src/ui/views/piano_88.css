@@ -1,0 +1,358 @@
+.piano-layout {
+  grid-template-columns: 1fr;
+}
+
+.piano-shell {
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.70), rgba(255, 255, 255, 0.86));
+  padding: 14px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.piano {
+  --white-w: clamp(18px, 2.2vw, 28px);
+  --white-h: clamp(180px, 22vh, 240px);
+  --black-w: calc(var(--white-w) * 0.62);
+  --black-h: calc(var(--white-h) * 0.62);
+  --white-count: 52;
+  --down-fill: rgba(37, 99, 235, 0.22);
+  --down-stroke: rgba(37, 99, 235, 0.22);
+  --down-halo: rgba(37, 99, 235, 0.10);
+  --down-shadow: rgba(37, 99, 235, 0.12);
+  --held-fill: rgba(16, 185, 129, 0.18);
+  --held-stroke: rgba(16, 185, 129, 0.18);
+  --held-halo: rgba(16, 185, 129, 0.10);
+  --held-shadow: rgba(16, 185, 129, 0.12);
+  position: relative;
+  width: calc(var(--white-count) * var(--white-w));
+  height: var(--white-h);
+  user-select: none;
+}
+
+.piano-key {
+  position: absolute;
+  bottom: 0;
+  --key-fill: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 10px;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, box-shadow 0.10s ease, filter 0.10s ease;
+}
+
+.piano-key::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  opacity: 0;
+  background: var(--key-fill);
+  transition: opacity 0.10s ease;
+  pointer-events: none;
+}
+
+.piano-key:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.piano-key.white {
+  width: var(--white-w);
+  height: var(--white-h);
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.98));
+  box-shadow:
+    0 18px 30px rgba(2, 6, 23, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -10px 18px rgba(2, 6, 23, 0.06);
+}
+
+.piano-key.white::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 14%, rgba(37, 99, 235, 0.14), transparent 46%);
+  opacity: 0;
+  transition: opacity 0.10s ease;
+  pointer-events: none;
+}
+
+.piano-key.black {
+  top: 0;
+  bottom: auto;
+  width: var(--black-w);
+  height: var(--black-h);
+  z-index: 2;
+  border-color: rgba(2, 6, 23, 0.55);
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(2, 6, 23, 0.98));
+  box-shadow:
+    0 18px 26px rgba(2, 6, 23, 0.28),
+    inset 0 1px 0 rgba(148, 163, 184, 0.10),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.38);
+}
+
+.piano-key.black::before {
+  mix-blend-mode: screen;
+}
+
+.piano-key.black::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 16%, rgba(96, 165, 250, 0.18), transparent 46%);
+  opacity: 0;
+  transition: opacity 0.10s ease;
+  pointer-events: none;
+}
+
+.piano-key.is-down {
+  transform: translateY(2px);
+  filter: saturate(1.05);
+  --key-fill: var(--down-fill);
+}
+
+.piano-key.is-held {
+  --key-fill: var(--held-fill);
+}
+
+.piano-key.is-down::before,
+.piano-key.is-held::before {
+  opacity: 1;
+}
+
+.piano-key.is-down.white {
+  box-shadow:
+    0 20px 34px rgba(2, 6, 23, 0.12),
+    0 0 0 1px var(--down-stroke),
+    0 0 0 6px var(--down-halo),
+    0 10px 30px var(--down-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -10px 18px rgba(2, 6, 23, 0.05);
+}
+
+.piano-key.is-down.black {
+  box-shadow:
+    0 18px 26px rgba(2, 6, 23, 0.30),
+    0 0 0 1px var(--down-stroke),
+    0 0 0 6px var(--down-halo),
+    0 10px 26px var(--down-shadow),
+    inset 0 1px 0 rgba(148, 163, 184, 0.12),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.32);
+}
+
+.piano-key.is-down::after {
+  opacity: 1;
+}
+
+.piano-key.is-held.white {
+  box-shadow:
+    0 20px 34px rgba(2, 6, 23, 0.10),
+    0 0 0 1px var(--held-stroke),
+    0 0 0 6px var(--held-halo),
+    0 10px 30px var(--held-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -10px 18px rgba(2, 6, 23, 0.05);
+}
+
+.piano-key.is-held.black {
+  box-shadow:
+    0 18px 26px rgba(2, 6, 23, 0.30),
+    0 0 0 1px var(--held-stroke),
+    0 0 0 6px var(--held-halo),
+    0 10px 26px var(--held-shadow),
+    inset 0 1px 0 rgba(148, 163, 184, 0.12),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.32);
+}
+
+.piano-key-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 26px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+  color: rgba(15, 23, 42, 0.72);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.10s ease, transform 0.10s ease;
+  pointer-events: none;
+}
+
+.piano-key.black .piano-key-label {
+  color: rgba(226, 232, 240, 0.90);
+  background: rgba(2, 6, 23, 0.62);
+  border-color: rgba(148, 163, 184, 0.22);
+  bottom: 10px;
+}
+
+.piano-key.show-note .piano-key-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.piano-c-mark {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: auto;
+  bottom: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.70);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.piano-key.show-c .piano-c-mark {
+  opacity: 1;
+}
+
+.piano-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.piano-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.piano-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.piano-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.piano-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.piano-swatch-down {
+  background: var(--down-fill);
+  box-shadow: 0 0 0 6px var(--down-halo);
+}
+
+.piano-swatch-held {
+  background: var(--held-fill);
+  box-shadow: 0 0 0 6px var(--held-halo);
+}
+
+.piano-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.piano-palette-row {
+  display: grid;
+  grid-template-columns: 42px auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.piano-palette-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.piano-color-input {
+  width: 44px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.70);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.80);
+  cursor: pointer;
+}
+
+.piano-color-input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.metronome-select {
+  flex: 1;
+  min-width: 72px;
+}
+
+.metronome-select select {
+  width: 100%;
+  height: 32px;
+  border: 1px solid rgba(148, 163, 184, 0.60);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.96);
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.metronome-select select:focus-visible {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.65);
+  box-shadow: var(--focus);
+}
+
+@media (max-width: 1180px) {
+  .piano-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .piano-shell {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(11, 18, 32, 0.82));
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .piano-key.white {
+    border-color: rgba(148, 163, 184, 0.26);
+    background: linear-gradient(180deg, rgba(241, 245, 249, 0.92), rgba(203, 213, 225, 0.88));
+  }
+
+  .piano-key-label {
+    background: rgba(15, 23, 42, 0.60);
+    color: rgba(226, 232, 240, 0.92);
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .piano-color-input {
+    background: rgba(15, 23, 42, 0.60);
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .metronome-select select {
+    background: rgba(15, 23, 42, 0.55);
+    border-color: rgba(148, 163, 184, 0.22);
+    color: rgba(241, 245, 249, 0.96);
+  }
+}

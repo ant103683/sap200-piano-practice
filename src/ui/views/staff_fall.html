@@ -113,6 +113,76 @@
             </div>
           </section>
 
+          <section class="card metronome-card">
+            <div class="card-header">
+              <span>节拍器</span>
+              <span class="status-pill" id="metronome-status" role="status" aria-live="polite">停止</span>
+            </div>
+            <div class="card-body stack-12">
+              <div class="btn-group">
+                <button id="metronome-toggle" class="btn btn-primary" type="button">开始</button>
+              </div>
+
+              <div class="metronome-row">
+                <span class="control-label">速度</span>
+                <input
+                  id="metronome-bpm"
+                  type="range"
+                  min="40"
+                  max="220"
+                  step="1"
+                  value="96"
+                  class="range-slider"
+                />
+                <input id="metronome-bpm-num" class="metronome-num" type="number" min="40" max="220" step="1" value="96" />
+                <span id="metronome-bpm-value" class="interval-pill">96 BPM</span>
+              </div>
+
+              <div class="metronome-row">
+                <span class="control-label">拍号</span>
+                <div class="metronome-select metronome-field">
+                  <select id="metronome-beats" class="metronome-input">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="6">6</option>
+                  </select>
+                </div>
+                <span class="metronome-spacer"></span>
+                <span id="metronome-beats-value" class="interval-pill">4/4</span>
+              </div>
+
+              <div class="metronome-row">
+                <span class="control-label">音色</span>
+                <div class="metronome-select metronome-field">
+                  <select id="metronome-timbre" class="metronome-input">
+                    <option value="click" selected>电子</option>
+                    <option value="soft">柔和</option>
+                    <option value="clear">清晰</option>
+                    <option value="bright">明亮</option>
+                  </select>
+                </div>
+                <span class="metronome-spacer"></span>
+                <span id="metronome-timbre-value" class="interval-pill">电子</span>
+              </div>
+
+              <div class="metronome-row">
+                <span class="control-label">音量</span>
+                <input
+                  id="metronome-volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.6"
+                  class="range-slider"
+                />
+                <input id="metronome-volume-num" class="metronome-num" type="number" min="0" max="1" step="0.05" value="0.6" />
+                <span id="metronome-volume-value" class="interval-pill">60%</span>
+              </div>
+            </div>
+          </section>
+
           <section class="card">
             <div class="card-header">计分板</div>
             <div class="card-body">

@@ -497,6 +497,64 @@ input[type="number"]:focus {
   box-shadow: var(--focus);
 }
 
+.metronome-select {
+  flex: 1;
+  min-width: 72px;
+}
+
+.metronome-select select,
+.metronome-input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid rgba(148, 163, 184, 0.60);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.96);
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.metronome-select select:focus-visible,
+.metronome-input:focus-visible {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.65);
+  box-shadow: var(--focus);
+}
+
+.metronome-card .card-body {
+  gap: 14px;
+}
+
+.metronome-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 80px 86px;
+  gap: 10px;
+  align-items: center;
+}
+
+.metronome-row .range-slider {
+  margin: 0;
+}
+
+.metronome-field {
+  min-width: 120px;
+}
+
+.metronome-num {
+  width: 80px;
+}
+
+.metronome-spacer {
+  width: 80px;
+  height: 1px;
+}
+
+.metronome-row .interval-pill {
+  min-width: 86px;
+  justify-self: end;
+}
+
 .range-inputs {
   display: flex;
   align-items: center;
@@ -671,6 +729,21 @@ input[type="number"]:focus {
     grid-column: 1 / -1;
     justify-content: flex-end;
   }
+
+  .metronome-row {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .metronome-row .metronome-num,
+  .metronome-row .metronome-spacer,
+  .metronome-row .interval-pill {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .metronome-field {
+    grid-column: 2 / -1;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -755,6 +828,12 @@ input[type="number"]:focus {
 
   input[type="text"],
   input[type="number"] {
+    background: rgba(15, 23, 42, 0.55);
+    border-color: rgba(148, 163, 184, 0.22);
+    color: rgba(241, 245, 249, 0.96);
+  }
+
+  .metronome-select select {
     background: rgba(15, 23, 42, 0.55);
     border-color: rgba(148, 163, 184, 0.22);
     color: rgba(241, 245, 249, 0.96);
