@@ -1,1 +1,5 @@
 logs/
+
+# Python bytecode and cache directories
+__pycache__/
+*.py[cod]
